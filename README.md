@@ -1,0 +1,1 @@
+Edge image classifier for resource constraint edge nodes
