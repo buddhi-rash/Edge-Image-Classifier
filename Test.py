@@ -22,7 +22,7 @@ def evaluate():
     model = NodeConvs_Net(in_channels=3, base_channels= 32, levels= 3, dropout= 0.4, fc_depth= 1).to(device)
     print(f"Total trainable parameters: {model.count_trainable_parameters():,}")
 
-    state_dict = torch.load('Weights/Best_modelA_1.pth', weights_only=True)
+    state_dict = torch.load('Weights/Best_modelA_fine_tuned.pth', weights_only=True)
     model.load_state_dict(state_dict)
     print("loaded the best saved model")
 
@@ -36,7 +36,7 @@ def evaluate():
             pred_logits = model(images)
 
             probs = F.softmax(pred_logits, dim=1)
-            test_loader_probs_list.append(probs.cpu().numpy())
+            test_probs_list.append(probs.cpu().numpy())
             test_targets_list.append(labels.cpu().numpy())
 
     end_time = time.time()
