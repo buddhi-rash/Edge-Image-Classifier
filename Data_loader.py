@@ -32,7 +32,7 @@ class BloodMNISTDataset(Dataset):
         return img, label
  
  
-def get_dataloaders(npz_path="bloodmnist_70_15_15.npz", batch_size=64, num_workers=2):
+def get_dataloaders(npz_path="BloodMNIST/bloodmnist_70_15_15.npz", batch_size=64, num_workers=2):
     data = np.load(npz_path)
  
     train_images, train_labels = data["train_images"], data["train_labels"].reshape(-1)
