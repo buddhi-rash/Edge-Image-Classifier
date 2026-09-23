@@ -46,18 +46,18 @@ def train_model():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
 
-    model = NodeConvs_Net(in_channels=3, base_channels= 64, levels= 4, dropout= 0.4, fc_depth= 2).to(device)
+    model = NodeConvs_Net(in_channels=3, base_channels= 32, levels= 3, dropout= 0.5, fc_depth= 1).to(device)
     print(f"Total trainable parameters: {model.count_trainable_parameters():,}")
 
     train_loader, val_loader, test_loader, (mean, std) = get_dataloaders(batch_size= 64, num_workers= 2)
 
-    counts = np.bincount(train_loader.dataset.labels, minlength=8 )
-    weights = counts.sum() / (num_classes * counts)
-    weights =  torch.tensor(weights, dtype=torch.float32, device=device)
+    """counts = np.bincount(train_loader.dataset.labels, minlength=8 )
+    weights = counts.sum() / (8 * counts)
+    weights =  torch.tensor(weights, dtype=torch.float32, device=device)"""
 
 
-    loss_critation = nn.CrossEntropyLoss(weight = weights)
-    optimizer = torch.optim.Adam(params = model.parameters(), lr = 1e-3, weight_decay= 1e-4)
+    loss_critation = nn.CrossEntropyLoss()
+    optimizer = torch.optim.Adam(params = model.parameters(), lr = 1e-4, weight_decay= 1e-3)
 
     history = {
             "train_loss": [], "val_loss": [],
@@ -91,7 +91,7 @@ def train_model():
                 predicts = model(images)
 
                 loss = loss_critation(predicts, labels)
-                loss.backwards()
+                loss.backward()
                 optimizer.step()
 
                 total_loss += loss.item() * images.size(0)
@@ -106,6 +106,7 @@ def train_model():
 
         #Validation Step
         model.eval()
+        #model.train()
 
         total_loss = 0.0
         correct = 0
@@ -116,7 +117,7 @@ def train_model():
 
         with torch.inference_mode():
             for images, labels in val_loader:
-                images, labels = images.to(devie), labels.to(device)
+                images, labels = images.to(device), labels.to(device)
 
                 predicts = model(images)
                 val_loss = loss_critation(predicts, labels)
@@ -138,7 +139,7 @@ def train_model():
  
         history["train_loss"].append(avg_train_loss)
         history["val_loss"].append(avg_val_loss)
-        history["train_acc"].append(train_acc)
+        history["train_acc"].append(train_accuracy)
         history["val_acc"].append(val_metrics["accuracy"])
         history["val_auc"].append(val_metrics["auc"])
         history["val_f1"].append(val_metrics["f1"])
@@ -152,16 +153,16 @@ def train_model():
 
         print(
             f"Epoch {epoch+1:2d}/{EPOCHS} | "
-            f"Train Loss: {avg_train_loss:.4f} | Acc: {train_acc:.4f} || "
-            f"Val Loss: {avg_val_loss:.4f} | Acc: {val_metrics['accuracy']:.4f} | "
+            f"Train Loss: {avg_train_loss:.4f} | train_Acc: {train_accuracy:.4f} || "
+            f"Val Loss: {avg_val_loss:.4f} | Val_Acc: {val_metrics['accuracy']:.4f} | "
             f"AUC: {val_metrics['auc']:.4f} | F1: {val_metrics['f1']:.4f} | "
             f"Time: {train_time:.1f}s"
         )
 
 
-    avg_epoch_time = sum(history["epoch_time_sec"]) / len(history["epoch_time_sec"])
-    print(f"\nBest val accuracy: {best_val_acc:.4f}")
-    print(f"Average training time/epoch: {avg_epoch_time:.1f}s")
+    avg_epoch_time = sum(history["epoch_time_sec"]) / len( history["epoch_time_sec"])
+    print(f"\nBest Validation Macro AUC: {best_val_auc:.4f}")
+    print(f"Average Training Time / Epoch: {avg_epoch_time:.1f}s")
     
 
 

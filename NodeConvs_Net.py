@@ -11,12 +11,13 @@ class ConvBlock(nn.Module):
         self.conv1 = nn.Conv2d(in_channels = in_channels, out_channels = out_channels, kernel_size = kernel_size, padding=1)
         self.norm1 =nn.BatchNorm2d(out_channels)
         self.conv2 = nn.Conv2d(in_channels=out_channels, out_channels=out_channels, kernel_size= kernel_size, padding=1)
+        self.norm2 =nn.BatchNorm2d(out_channels)
         self.activation = nn.ReLU(inplace=True)
         self.pool = nn.MaxPool2d(kernel_size=2) if pool else nn.Identity()
 
     def forward(self, input_image):
         x_1 = self.activation(self.norm1(self.conv1(input_image)))
-        x_2 = self.activation(self.norm1(self.conv2(x_1)))
+        x_2 = self.activation(self.norm2(self.conv2(x_1)))
         feature_map = self.pool(x_2)
 
         return feature_map
