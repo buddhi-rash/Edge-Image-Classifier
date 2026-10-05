@@ -1,4 +1,5 @@
 from NodeConvs_Net import NodeConvs_Net
+from NodeConvs_B_Net import NodeConvs_B_Net
 from Data_loader import get_dataloaders
 import torch
 import torch.nn as nn
@@ -46,12 +47,21 @@ def train_model():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
 
-    model = NodeConvs_Net(in_channels=3, base_channels= 32, levels= 3, dropout= 0.4, fc_depth= 1).to(device)
-    print(f"Total trainable parameters: {model.count_trainable_parameters():,}")
+    model_A = NodeConvs_Net(in_channels=3, base_channels= 32, levels= 3, dropout= 0.4, fc_depth= 1).to(device)
+    print(f"Total trainable parameters of Model A: {model_A.count_trainable_parameters():,}")
+    model_B = NodeConvs_B_Net(in_channels=3, base_channels= 32, levels= 3, dropout= 0.4, fc_depth= 1).to(device)
+    print(f"Total trainable parameters of Model B: {model_B.count_trainable_parameters():,}")
 
-    state_dict = torch.load('Best_modelA_1.pth', weights_only=True)
-    model.load_state_dict(state_dict)
-    print("loaded the best saved model")
+    model = model_B  # Choose which model to train (model_A or model_B)
+    print(f"Training Model B with {model.count_trainable_parameters():,} trainable parameters.")
+
+    """state_dict_A = torch.load('Best_modelA_1.pth', weights_only=True)
+    model.load_state_dict(state_dict_A)
+    print("loaded the best saved model")"""
+
+    """state_dict_B = torch.load('Best_modelB_1.pth', weights_only=True)
+    model.load_state_dict(state_dict_B)
+    print("loaded the best saved model")"""
 
     train_loader, val_loader, test_loader, (mean, std) = get_dataloaders(batch_size= 64, num_workers= 2)
 
@@ -61,7 +71,7 @@ def train_model():
 
 
     loss_critation = nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(params = model.parameters(), lr = 1e-6, weight_decay= 1e-4)
+    optimizer = torch.optim.Adam(params = model.parameters(), lr = 1e-3, weight_decay= 1e-4)
 
     history = {
             "train_loss": [], "val_loss": [],
@@ -76,7 +86,7 @@ def train_model():
     best_val_f1 = 0.0
     best_state = None
     EPOCHS = 20
-    CHECKPOINT = "Best_modelA_2.pth"
+    CHECKPOINT = "Best_modelB_1.pth"
 
     for epoch in range(EPOCHS):
         # Train the Model
