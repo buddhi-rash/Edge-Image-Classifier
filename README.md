@@ -100,7 +100,7 @@ mkdir Weights
 
 Download the pretrained Model A checkpoint from Google Drive:
 
-**[Download Best_modelA_fine_tuned.pth](ADD_YOUR_GOOGLE_DRIVE_LINK_HERE)**
+**[Download Model Weights](https://drive.google.com/drive/folders/1Ne8R_WzfamynKc-2GJeZ9bEGDqFK0CG-?usp=sharing)**
 
 Place the downloaded file inside the `Weights/` folder so the path matches
 what `Test.py` expects:
