@@ -59,9 +59,9 @@ def train_model():
     model.load_state_dict(state_dict_A)
     print("loaded the best saved model")"""
 
-    """state_dict_B = torch.load('Best_modelB_1.pth', weights_only=True)
+    state_dict_B = torch.load('Best_modelB_2.pth', weights_only=True)
     model.load_state_dict(state_dict_B)
-    print("loaded the best saved model")"""
+    print("loaded the best saved model")
 
     train_loader, val_loader, test_loader, (mean, std) = get_dataloaders(batch_size= 64, num_workers= 2)
 
@@ -71,7 +71,7 @@ def train_model():
 
 
     loss_critation = nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(params = model.parameters(), lr = 1e-3, weight_decay= 1e-4)
+    optimizer = torch.optim.Adam(params = model.parameters(), lr = 1e-5, weight_decay= 1e-4)
 
     history = {
             "train_loss": [], "val_loss": [],
@@ -86,7 +86,7 @@ def train_model():
     best_val_f1 = 0.0
     best_state = None
     EPOCHS = 20
-    CHECKPOINT = "Best_modelB_1.pth"
+    CHECKPOINT = "Best_modelB_2.pth"
 
     for epoch in range(EPOCHS):
         # Train the Model
