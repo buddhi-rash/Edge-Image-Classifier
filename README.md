@@ -98,7 +98,7 @@ normalization statistics used by `Data_loader.py`.
 mkdir Weights
 ```
 
-Download the pretrained Model A checkpoint from Google Drive:
+Download the pretrained Model checkpoints from Google Drive:
 
 **[Download Model Weights](https://drive.google.com/drive/folders/1Ne8R_WzfamynKc-2GJeZ9bEGDqFK0CG-?usp=sharing)**
 
