@@ -214,7 +214,7 @@ def plot_loss_curves(history, model, optimizer_type, save_path, phase_boundaries
     plt.close(fig)
     print(f"Saved {save_path}")
 
-def model_comparison(model_A, model_B, optimizer_type, Save_path_A, Save_path_B, train_loader, val_loader, batch_size=64, num_workers=2, weight_decay=1e-4, momentum=0.9):
+def model_comparison(model_A, model_B, optimizer_type, Save_path_A, Save_path_B, train_loader, val_loader, weight_decay=1e-4, momentum=0.9):
     print("Training Model A...")
     model_A_trained, history_A, best_state_A, best_val_f1_A = train_model(
         model=model_A,
@@ -224,8 +224,6 @@ def model_comparison(model_A, model_B, optimizer_type, Save_path_A, Save_path_B,
         Save_path=Save_path_A,
         train_loader=train_loader,
         val_loader=val_loader,
-        batch_size=batch_size,
-        num_workers=num_workers,
         weight_decay=weight_decay,
         momentum=momentum
     )
@@ -239,8 +237,6 @@ def model_comparison(model_A, model_B, optimizer_type, Save_path_A, Save_path_B,
         Save_path=Save_path_A,
         train_loader=train_loader,
         val_loader=val_loader,
-        batch_size=batch_size,
-        num_workers=num_workers,
         weight_decay=weight_decay,
         momentum=momentum,
         history=history_A,
@@ -259,8 +255,6 @@ def model_comparison(model_A, model_B, optimizer_type, Save_path_A, Save_path_B,
         Save_path=Save_path_B,
         train_loader=train_loader,
         val_loader=val_loader,
-        batch_size=batch_size,
-        num_workers=num_workers,
         weight_decay=weight_decay,
         momentum=momentum
     )
@@ -274,8 +268,6 @@ def model_comparison(model_A, model_B, optimizer_type, Save_path_A, Save_path_B,
         Save_path=Save_path_B,
         train_loader=train_loader,
         val_loader=val_loader,
-        batch_size=batch_size,
-        num_workers=num_workers,
         weight_decay=weight_decay,
         momentum=momentum,
         history=history_B,
