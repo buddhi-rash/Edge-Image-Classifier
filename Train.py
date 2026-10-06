@@ -1,4 +1,4 @@
-from NodeConvs_Net import NodeConvs_Net
+from NodeConvs_A_Net import NodeConvs_Net
 from NodeConvs_B_Net import NodeConvs_B_Net
 from Data_loader import get_dataloaders
 import torch
@@ -7,6 +7,7 @@ import numpy as np
 import time
 import copy
 import torch.nn.functional as F
+import matplotlib.pyplot as plt
 from sklearn.metrics import (
     accuracy_score,
     confusion_matrix,
@@ -42,28 +43,20 @@ def compute_eval_metrics(labels, probabilities):
     }
 
 
-def train_model():
+def train_model(model, learning_rate,  epochs, optimizer_type, Save_path, train_loader, val_loader, state_dict_path=None, weight_decay=1e-4, momentum=0.9, history=None, best_val_f1=0.0, device=None):
+      
+    if device is None:
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    
+    model.to(device)
+    print(f"Training Model {model.__class__.__name__} with {model.count_trainable_parameters():,} trainable parameters.")
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"Using device: {device}")
+    if state_dict_path is not None:
+        state_dict = torch.load(state_dict_path, weights_only=True)
+        model.load_state_dict(state_dict)
+        print("loaded the best saved model")
 
-    model_A = NodeConvs_Net(in_channels=3, base_channels= 32, levels= 3, dropout= 0.4, fc_depth= 1).to(device)
-    print(f"Total trainable parameters of Model A: {model_A.count_trainable_parameters():,}")
-    model_B = NodeConvs_B_Net(in_channels=3, base_channels= 32, levels= 3, dropout= 0.4, fc_depth= 1).to(device)
-    print(f"Total trainable parameters of Model B: {model_B.count_trainable_parameters():,}")
-
-    model = model_B  # Choose which model to train (model_A or model_B)
-    print(f"Training Model B with {model.count_trainable_parameters():,} trainable parameters.")
-
-    """state_dict_A = torch.load('Best_modelA_1.pth', weights_only=True)
-    model.load_state_dict(state_dict_A)
-    print("loaded the best saved model")"""
-
-    state_dict_B = torch.load('Best_modelB_2.pth', weights_only=True)
-    model.load_state_dict(state_dict_B)
-    print("loaded the best saved model")
-
-    train_loader, val_loader, test_loader, (mean, std) = get_dataloaders(batch_size= 64, num_workers= 2)
+    
 
     """counts = np.bincount(train_loader.dataset.labels, minlength=8 )
     weights = counts.sum() / (8 * counts)
@@ -71,22 +64,27 @@ def train_model():
 
 
     loss_critation = nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(params = model.parameters(), lr = 1e-5, weight_decay= 1e-4)
 
-    history = {
-            "train_loss": [], "val_loss": [],
-            "train_acc": [], "val_acc": [],
-            "val_auc": [], "val_f1": [],
-            "epoch_time_sec": [], 
-              # training pass only, not validation
-            "lr": [],
-        }
+    if optimizer_type == "adam":
+        optimizer =  torch.optim.Adam(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
+    elif optimizer_type == "sgd":
+        optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate, momentum=0.0, weight_decay=weight_decay)
+    elif optimizer_type == "sgd_momentum":
+        optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate, momentum=momentum, weight_decay=weight_decay)
 
-    best_val_auc = 0.0
-    best_val_f1 = 0.0
+    if history is None:
+        history = {
+                "train_loss": [], "val_loss": [],
+                "train_acc": [], "val_acc": [],
+                "val_auc": [], "val_f1": [],
+                "epoch_time_sec": [], 
+                "lr": [],
+            }
+
+    
     best_state = None
-    EPOCHS = 20
-    CHECKPOINT = "Best_modelB_2.pth"
+    EPOCHS = epochs
+    CHECKPOINT = Save_path
 
     for epoch in range(EPOCHS):
         # Train the Model
@@ -121,7 +119,7 @@ def train_model():
 
         #Validation Step
         model.eval()
-        #model.train()
+  
 
         total_loss = 0.0
         correct = 0
@@ -178,8 +176,172 @@ def train_model():
     avg_epoch_time = sum(history["epoch_time_sec"]) / len( history["epoch_time_sec"])
     print(f"\nBest Validation Macro f1: {best_val_f1:.4f}")
     print(f"Average Training Time / Epoch: {avg_epoch_time:.1f}s")
-    
 
+    return model, history, best_state, best_val_f1
+    
+ 
+def plot_loss_curves(history, model, optimizer_type, save_path, phase_boundaries=None):
+    """phase_boundaries: epoch numbers (1-indexed) where a new phase
+    started (e.g. where the LR changed), drawn as dashed vertical lines."""
+
+    title = model.__class__.__name__
+    epochs = range(1, len(history["train_loss"]) + 1)
+ 
+    fig, axes = plt.subplots(1, 2, figsize=(12, 4))
+ 
+    axes[0].plot(epochs, history["train_loss"], label="train")
+    axes[0].plot(epochs, history["val_loss"], label="val")
+    axes[0].set_xlabel("Epoch")
+    axes[0].set_ylabel("Loss")
+    axes[0].set_title(f"{title}: Loss trained with {optimizer_type}")
+    axes[0].legend()
+ 
+    axes[1].plot(epochs, history["train_acc"], label="train")
+    axes[1].plot(epochs, history["val_acc"], label="val")
+    axes[1].set_xlabel("Epoch")
+    axes[1].set_ylabel("Accuracy")
+    axes[1].set_title(f"{title}: Accuracy trained with {optimizer_type} ")
+    axes[1].legend()
+ 
+    if phase_boundaries:
+        for ax in axes:
+            for boundary in phase_boundaries:
+                ax.axvline(boundary + 0.5, color="gray", linestyle="--", alpha=0.6)
+ 
+    plt.tight_layout()
+    plt.savefig(save_path, dpi=150)
+    plt.show()
+    plt.close(fig)
+    print(f"Saved {save_path}")
+
+def model_comparison(model_A, model_B, optimizer_type, Save_path_A, Save_path_B, train_loader, val_loader, batch_size=64, num_workers=2, weight_decay=1e-4, momentum=0.9):
+    print("Training Model A...")
+    model_A_trained, history_A, best_state_A, best_val_f1_A = train_model(
+        model=model_A,
+        learning_rate=1e-3,
+        epochs=20,
+        optimizer_type=optimizer_type,
+        Save_path=Save_path_A,
+        train_loader=train_loader,
+        val_loader=val_loader,
+        batch_size=batch_size,
+        num_workers=num_workers,
+        weight_decay=weight_decay,
+        momentum=momentum
+    )
+
+    model_A_trained, history_A, best_state_A, best_val_f1_A = train_model(
+        model=model_A,
+        learning_rate=1e-5,
+        epochs=30,
+        optimizer_type=optimizer_type,
+        state_dict_path = Save_path_A,
+        Save_path=Save_path_A,
+        train_loader=train_loader,
+        val_loader=val_loader,
+        batch_size=batch_size,
+        num_workers=num_workers,
+        weight_decay=weight_decay,
+        momentum=momentum,
+        history=history_A,
+        best_val_f1=best_val_f1_A
+    )
+
+
+
+
+    print("\nTraining Model B...")
+    model_B_trained, history_B, best_state_B, best_val_f1_B = train_model(
+        model=model_B,
+        learning_rate=1e-3,
+        epochs=20,
+        optimizer_type=optimizer_type,
+        Save_path=Save_path_B,
+        train_loader=train_loader,
+        val_loader=val_loader,
+        batch_size=batch_size,
+        num_workers=num_workers,
+        weight_decay=weight_decay,
+        momentum=momentum
+    )
+
+    model_B_trained, history_B, best_state_B, best_val_f1_B = train_model(
+        model=model_B,
+        learning_rate=1e-5,
+        epochs=30,
+        optimizer_type=optimizer_type,
+        state_dict_path = Save_path_B,
+        Save_path=Save_path_B,
+        train_loader=train_loader,
+        val_loader=val_loader,
+        batch_size=batch_size,
+        num_workers=num_workers,
+        weight_decay=weight_decay,
+        momentum=momentum,
+        history=history_B,
+        best_val_f1=best_val_f1_B
+    )
+
+    plot_path_A = Save_path_A.replace('.pth', '.png')
+    plot_path_B = Save_path_B.replace('.pth', '.png')
+    
+    plot_loss_curves(history_A, model_A, optimizer_type=optimizer_type, save_path=plot_path_A, phase_boundaries=[20])
+    plot_loss_curves(history_B, model_B, optimizer_type=optimizer_type, save_path=plot_path_B, phase_boundaries=[20])
 
 if __name__ == "__main__":
-    train_model()
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"Using device: {device}")
+
+    train_loader, val_loader, test_loader, (mean, std) = get_dataloaders(batch_size= 64, num_workers= 2)
+
+    
+    #Using Adam optimizer for both models
+    optimizer_type = "adam"
+
+    model_A = NodeConvs_Net(in_channels=3, base_channels= 32, levels= 3, dropout= 0.4, fc_depth= 1).to(device)
+    print(f"Total trainable parameters of Model A: {model_A.count_trainable_parameters():,}")
+    model_B = NodeConvs_B_Net(in_channels=3, base_channels= 32, levels= 3, dropout= 0.4, fc_depth= 1).to(device)
+    print(f"Total trainable parameters of Model B: {model_B.count_trainable_parameters():,}")
+    print(f"Training using optimizer: {optimizer_type}")
+    model_comparison(
+        model_A=model_A,
+        model_B=model_B,
+        optimizer_type=optimizer_type,
+        Save_path_A="model_A.pth",
+        Save_path_B="model_B.pth",
+        train_loader=train_loader,
+        val_loader=val_loader
+    )
+
+    optimizer_type = "sgd"
+    model_A = NodeConvs_Net(in_channels=3, base_channels= 32, levels= 3, dropout= 0.4, fc_depth= 1).to(device)
+    print(f"Total trainable parameters of Model A: {model_A.count_trainable_parameters():,}")
+    model_B = NodeConvs_B_Net(in_channels=3, base_channels= 32, levels= 3, dropout= 0.4, fc_depth= 1).to(device)
+    print(f"Total trainable parameters of Model B: {model_B.count_trainable_parameters():,}")
+    print(f"Training using optimizer: {optimizer_type}")
+    model_comparison(
+        model_A=model_A,
+        model_B=model_B,
+        optimizer_type=optimizer_type,
+        Save_path_A="model_A_sgd.pth",
+        Save_path_B="model_B_sgd.pth",
+        train_loader=train_loader,
+        val_loader=val_loader
+    )   
+
+    optimizer_type = "sgd_momentum"
+    model_A = NodeConvs_Net(in_channels=3, base_channels= 32, levels= 3, dropout= 0.4, fc_depth= 1).to(device)
+    print(f"Total trainable parameters of Model A: {model_A.count_trainable_parameters():,}")
+    model_B = NodeConvs_B_Net(in_channels=3, base_channels= 32, levels= 3, dropout= 0.4, fc_depth= 1).to(device)
+    print(f"Total trainable parameters of Model B: {model_B.count_trainable_parameters():,}")
+    print(f"Training using optimizer: {optimizer_type}")
+    model_comparison(
+        model_A=model_A,
+        model_B=model_B,
+        optimizer_type=optimizer_type,
+        Save_path_A="model_A_sgd_momentum.pth",
+        Save_path_B="model_B_sgd_momentum.pth",
+        train_loader=train_loader,
+        val_loader=val_loader
+    )   

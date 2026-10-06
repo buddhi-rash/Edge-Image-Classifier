@@ -1,4 +1,4 @@
-from NodeConvs_Net import NodeConvs_Net
+from NodeConvs_A_Net import NodeConvs_Net
 from NodeConvs_B_Net import NodeConvs_B_Net
 from Data_loader import get_dataloaders
 from Train import compute_eval_metrics
