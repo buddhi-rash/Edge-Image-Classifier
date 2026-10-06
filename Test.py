@@ -25,16 +25,16 @@ def evaluate():
     Model_B = NodeConvs_B_Net(in_channels=3, base_channels= 32, levels= 3, dropout= 0.4, fc_depth= 1).to(device)
     print(f"Total trainable parameters of Model B: {Model_B.count_trainable_parameters():,}") 
 
-    """model = Model_B  # Choose which model to evaluate (Model_A or Model_B)
-    print(f"Evaluating Model B with {model.count_trainable_parameters():,} trainable parameters.")"""
+    model = Model_B  # Choose which model to evaluate (Model_A or Model_B)
+    print(f"Evaluating Model B with {model.count_trainable_parameters():,} trainable parameters.")
 
-    model = Model_A  # Choose which model to evaluate (Model_A or Model_B)
-    print(f"Evaluating Model A with {model.count_trainable_parameters():,} trainable parameters.")  
+    """model = Model_A  # Choose which model to evaluate (Model_A or Model_B)
+    print(f"Evaluating Model A with {model.count_trainable_parameters():,} trainable parameters.")  """
 
 
-    state_dict_A = torch.load('Weights/Best_modelA_fine_tuned.pth', weights_only=True)
-    state_dict_B = torch.load('Weights/Best_modelB_fine_tuned.pth', weights_only=True)
-    model.load_state_dict(state_dict_A)
+    state_dict_A = torch.load('Weights/model_A.pth', weights_only=True)
+    state_dict_B = torch.load('Weights/model_B.pth', weights_only=True)
+    model.load_state_dict(state_dict_B)
     print("loaded the best saved model")
 
     model.eval()
@@ -63,7 +63,7 @@ def evaluate():
     # FORMATTED PRINT STATEMENTS
     # ==========================================
     print("="*50)
-    print(" 🩸 BLOODMNIST TEST SET EVALUATION ON Model A")
+    print(" 🩸 BLOODMNIST TEST SET EVALUATION ON Model B")
     print("="*50)
     print(f"Total Test Samples : {len(test_targets)}")
     print(f"Inference Time     : {inference_time:.2f} seconds")
@@ -76,11 +76,11 @@ def evaluate():
     print(f"Macro Recall       : {test_metrics['recall']:.4f}")
     print("="*50)
     
-    print("\n[PER-CLASS CLASSIFICATION REPORT for Model A]")
+    print("\n[PER-CLASS CLASSIFICATION REPORT for Model B]")
     # The classification report provides a breakdown for every single class
     print(classification_report(test_targets, test_preds, digits=4))
 
-    print("\n[CONFUSION MATRIX for Model A]")
+    print("\n[CONFUSION MATRIX for Model B]")
     # Formats the numpy array slightly nicer for terminal output
     cm = test_metrics['confusion_matrix']
     for row in cm:
