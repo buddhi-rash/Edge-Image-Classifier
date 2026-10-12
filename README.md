@@ -31,6 +31,9 @@ and compared on **BloodMNIST** (part of the MedMNIST+ collection) — a
 ├── NodeConvs_B_Net.py    # Model B -- depthwise-separable lightweight CNN
 ├── Train.py               # Training loop, checkpointing, metric tracking
 ├── Test.py                 # Test-set evaluation and reporting
+├── SOTA_Finetune.py        # Part 5: fine-tunes MobileNetV2 & ShuffleNetV2
+├── colab_training_SOTA.ipynb  # Colab notebook used to run Part 5 training
+├── SOTA_Results/           # Part 5 curves + metrics (sota_results.json)
 ├── BloodMNIST/              # (create this) prepared dataset split
 │   └── bloodmnist_70_15_15.npz
 ├── Weights/                  # (create this) model checkpoints
@@ -163,6 +166,44 @@ smallest classes), so model selection and evaluation lean on
 contributes equally, so performance isn't dominated by the majority
 classes. `Test.py` also prints a full per-class `classification_report`
 and the confusion matrix for a complete breakdown.
+
+### SOTA Fine-Tuning (MobileNetV2, ShuffleNetV2)
+
+Two ImageNet-pretrained lightweight networks from `torchvision` are fine-tuned
+on the **same 70/15/15 BloodMNIST split** used for Models A and B:
+
+- **MobileNetV2**: depthwise separable convolutions with inverted residuals
+- **ShuffleNetV2 (x1.0)**: grouped convolutions with channel shuffle
+
+The original 1000-class head of each network is replaced with an 8-class layer.
+Training uses two phases (Adam, same data pipeline as Models A/B):
+
+1. **Head only**: backbone frozen, 5 epochs, lr = 1e-3
+2. **Full fine-tuning**: all layers unfrozen, 20 epochs, lr = 1e-4
+
+The best checkpoint (by validation macro F1) is evaluated on the test set.
+Training was run on Google Colab (T4 GPU); the full run is in
+`colab_training_SOTA.ipynb`.
+
+### Run
+
+```bash
+python SOTA_Finetune.py
+```
+
+This writes checkpoints to `Weights/` and the curves and
+`sota_results.json` to `SOTA_Results/`.
+
+### Results
+
+
+| Model | Params | Size (MB) | Test Acc | Macro F1 | Macro Precision | Macro Recall | Macro AUC |
+|---|---|---|---|---|---|---|---|
+| MobileNetV2 | 2,234,120 | 8.94 | 98.60% | 0.9860 | 0.9869 | 0.9852 | 0.9990 |
+| ShuffleNetV2 | 1,261,804 | 5.05 | 98.75% | 0.9869 | 0.9874 | 0.9865 | 0.9987 |
+
+Training curves: `SOTA_Results/MobileNetV2.png`, `SOTA_Results/ShuffleNetV2.png`.
+Fine-tuned weights: <https://drive.google.com/drive/folders/1lfB8LVvGpewqM85J520LCcH1h-INYjhp?usp=sharing>
 
 ## Known Issues / Before You Run
 
