@@ -2,8 +2,10 @@ import torch
 import torch.nn as nn
 import numpy as np
 from torch.utils.data import Dataset, DataLoader
+# Prepare normalized image batches for training and evaluation.
 
 
+# Dataset keeps each image and its label together.
 class BloodMNISTDataset(Dataset):
  
     def __init__(self, images, labels, mean, std, augment=False):
@@ -17,22 +19,25 @@ class BloodMNISTDataset(Dataset):
         return len(self.labels)
  
     def __getitem__(self, idx):
+        # Convert integer pixels to floating point and scale to [0, 1].
         img = self.images[idx].astype(np.float32) / 255.0  # -> [0, 1]
- 
+
         if self.augment:
             if np.random.rand() < 0.5:
                 img = img[:, ::-1, :].copy()  # horizontal flip
             if np.random.rand() < 0.5:
                 img = img[::-1, :, :].copy()  # vertical flip
  
+        # Normalize using the training-set mean and standard deviation.
         img = (img - self.mean) / self.std                     # normalize
         img = torch.from_numpy(img).permute(2, 0, 1).float()   # HWC -> CHW
- 
+
         label = torch.tensor(self.labels[idx], dtype=torch.long)
         return img, label
  
  
 def get_dataloaders(npz_path="BloodMNIST/bloodmnist_70_15_15.npz", batch_size=64, num_workers=2):
+    # Load the saved split and compute normalization statistics.
     data = np.load(npz_path)
  
     train_images, train_labels = data["train_images"], data["train_labels"].reshape(-1)
@@ -47,6 +52,7 @@ def get_dataloaders(npz_path="BloodMNIST/bloodmnist_70_15_15.npz", batch_size=64
     val_ds = BloodMNISTDataset(val_images, val_labels, mean, std, augment=False)
     test_ds = BloodMNISTDataset(test_images, test_labels, mean, std, augment=False)
  
+    # Create loaders for training, validation, and test batches.
     train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True, num_workers=num_workers, pin_memory=True)
     val_loader = DataLoader(val_ds, batch_size=batch_size, shuffle=False, num_workers=num_workers, pin_memory=True)
     test_loader = DataLoader(test_ds, batch_size=batch_size, shuffle=False, num_workers=num_workers, pin_memory=True)

@@ -8,6 +8,7 @@ import time
 import copy
 import torch.nn.functional as F
 import matplotlib.pyplot as plt
+# Training utilities track metrics and model checkpoints.
 from sklearn.metrics import (
     accuracy_score,
     confusion_matrix,
@@ -18,6 +19,7 @@ from sklearn.metrics import (
 )
 
 def compute_eval_metrics(labels, probabilities):
+    # Compute macro metrics for validation and checkpoint review.
 
     predictions = np.argmax(probabilities, axis=1)
 
@@ -44,6 +46,7 @@ def compute_eval_metrics(labels, probabilities):
 
 
 def train_model(model, learning_rate,  epochs, optimizer_type, Save_path, train_loader, val_loader, state_dict_path=None, weight_decay=1e-4, momentum=0.9, history=None, best_val_f1=0.0, device=None):
+    # Train one model and save the best validation checkpoint.
       
     if device is None:
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -87,7 +90,7 @@ def train_model(model, learning_rate,  epochs, optimizer_type, Save_path, train_
     CHECKPOINT = Save_path
 
     for epoch in range(EPOCHS):
-        # Train the Model
+        # Train the model on each image batch.
         model.train()
 
         total_loss = 0.0
@@ -117,7 +120,7 @@ def train_model(model, learning_rate,  epochs, optimizer_type, Save_path, train_
 
         train_time = time.time() - train_start
 
-        #Validation Step
+        # Validate without gradient updates and track metrics.
         model.eval()
   
 
@@ -160,6 +163,7 @@ def train_model(model, learning_rate,  epochs, optimizer_type, Save_path, train_
         history["lr"].append(current_lr)
 
         if val_metrics["f1"] > best_val_f1:
+            # Save the checkpoint only when validation F1 improves.
             best_val_f1 = val_metrics["f1"]
             best_state = copy.deepcopy(model.state_dict())
             torch.save(best_state, CHECKPOINT)
@@ -181,6 +185,7 @@ def train_model(model, learning_rate,  epochs, optimizer_type, Save_path, train_
     
  
 def plot_loss_curves(history, model, optimizer_type, save_path, phase_boundaries=None):
+    # Plot loss and accuracy curves for training diagnostics.
     """phase_boundaries: epoch numbers (1-indexed) where a new phase
     started (e.g. where the LR changed), drawn as dashed vertical lines."""
 
@@ -215,6 +220,7 @@ def plot_loss_curves(history, model, optimizer_type, save_path, phase_boundaries
     print(f"Saved {save_path}")
 
 def model_comparison(model_A, model_B, optimizer_type, Save_path_A, Save_path_B, train_loader, val_loader, weight_decay=1e-4, momentum=0.9):
+    # Compare both model variants with the same training setup.
     print("Training Model A...")
     model_A_trained, history_A, best_state_A, best_val_f1_A = train_model(
         model=model_A,

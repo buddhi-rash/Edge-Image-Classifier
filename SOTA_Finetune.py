@@ -18,6 +18,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from sklearn.metrics import classification_report
 from torchvision import models
+# Fine-tune pretrained vision backbones for the BloodMNIST classification task.
 
 from Data_loader import get_dataloaders
 from Train import compute_eval_metrics, plot_loss_curves, train_model
@@ -27,23 +28,27 @@ HEAD_EPOCHS = 5        # phase 1: only the new classifier head is trained
 FULL_EPOCHS = 20       # phase 2: whole network fine-tuned 
 HEAD_LR = 1e-3
 FULL_LR = 1e-4
+# Create the weights directory before saving checkpoints.
 os.makedirs("Weights", exist_ok=True)
 
 
-#models
+# models are selected for transfer learning.
 def build_mobilenet_v2():
+    # Fine-tune a compact MobileNetV2 backbone for classification.
     m = models.mobilenet_v2(weights=models.MobileNet_V2_Weights.IMAGENET1K_V1)
     m.classifier[1] = nn.Linear(m.last_channel, NUM_CLASSES)   # 1000 -> 8
     return m, m.classifier
 
 
 def build_shufflenet_v2():
+    # Fine-tune a lightweight ShuffleNetV2 backbone for classification.
     m = models.shufflenet_v2_x1_0(weights=models.ShuffleNet_V2_X1_0_Weights.IMAGENET1K_V1)
     m.fc = nn.Linear(m.fc.in_features, NUM_CLASSES)            # 1000 -> 8
     return m, m.fc
 
 
 def set_backbone_trainable(model, head, trainable):
+    # Freeze the backbone first, then unlock full fine-tuning later.
     """trainable=False -> only the head learns; True -> everything learns."""
     for p in model.parameters():
         p.requires_grad = trainable
@@ -52,6 +57,7 @@ def set_backbone_trainable(model, head, trainable):
 
 
 def total_params(model):
+    # Count all trainable and frozen model parameters.
     return sum(p.numel() for p in model.parameters())
 
 
@@ -59,9 +65,10 @@ def model_size_mb(model):
     return total_params(model) * 4 / 1e6          # float32 = 4 bytes/param
 
 
-#fine-tuning
+# fine-tuning pipeline for pretrained backbones.
 def finetune(name, builder, train_loader, val_loader, device):
     print(f"\n{'=' * 60}\nFine-tuning {name}\n{'=' * 60}")
+    # Build a pretrained backbone with a new output classifier.
     model, head = builder()
     model.to(device)
     # train_model() calls model.count_trainable_parameters();
@@ -70,13 +77,13 @@ def finetune(name, builder, train_loader, val_loader, device):
 
     ckpt = f"Weights/{name}.pth"
 
-    # Phase 1: freeze backbone, train new head
+    # Phase 1: train only the classifier head.
     set_backbone_trainable(model, head, False)
     model, history, _, best_f1 = train_model(
         model=model, learning_rate=HEAD_LR, epochs=HEAD_EPOCHS, optimizer_type="adam",
         Save_path=ckpt, train_loader=train_loader, val_loader=val_loader, device=device)
 
-    # Phase 2: unfreeze everything, small LR
+    # Phase 2: unfreeze the backbone and continue training.
     set_backbone_trainable(model, head, True)
     model, history, _, best_f1 = train_model(
         model=model, learning_rate=FULL_LR, epochs=FULL_EPOCHS, optimizer_type="adam",
@@ -88,8 +95,9 @@ def finetune(name, builder, train_loader, val_loader, device):
     return model, history, ckpt
 
 
-#evaluation
+# evaluation on the held-out test set.
 def evaluate(name, model, ckpt, history, test_loader, device):
+    # Load the best saved weights before inference.
     model.load_state_dict(torch.load(ckpt, weights_only=True))
     model.to(device).eval()
 
@@ -105,6 +113,7 @@ def evaluate(name, model, ckpt, history, test_loader, device):
     probs = np.concatenate(probs_list)
     targets = np.concatenate(targets_list)
     preds = probs.argmax(1)
+    # Summarize test-time accuracy, F1, and confusion matrix.
     m = compute_eval_metrics(targets, probs)
 
     result = {
@@ -145,6 +154,7 @@ if __name__ == "__main__":
         model, history, ckpt = finetune(name, builder, train_loader, val_loader, device)
         results.append(evaluate(name, model, ckpt, history, test_loader, device))
 
+    # Save final benchmark results to JSON.
     with open("Weights/sota_results.json", "w") as f:
         json.dump(results, f, indent=2)
     print("\nSaved Weights/sota_results.json")

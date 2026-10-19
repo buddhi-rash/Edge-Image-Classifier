@@ -1,29 +1,34 @@
 from medmnist import BloodMNIST
 import numpy as np
 from sklearn.model_selection import train_test_split
-
+# Build a stable BloodMNIST split for training and evaluation.
 
 Image_res = 64
 random_seed = 21
 
+# Download BloodMNIST images in RGB format.
 train_set = BloodMNIST(split= "train", download= True, as_rgb = True, size = Image_res)
 val_set = BloodMNIST(split= "val", download= True, as_rgb = True, size = Image_res)
 test_set = BloodMNIST(split= "test", download= True, as_rgb = True, size = Image_res)
 
+# Combine validation and test data before the final split.
 merged_img = np.concatenate([val_set.imgs, test_set.imgs], axis = 0)
 merged_labels = np.concatenate([val_set.labels, test_set.labels], axis = 0)
 merged_labels_flat = merged_labels.reshape(-1) 
 
+# Preserve class balance while creating the final validation and test sets.
 val_imgs , test_imgs , val_labels, test_labels = train_test_split(merged_img, merged_labels, test_size=0.5, random_state= random_seed, stratify=merged_labels_flat)
 
 train_imgs = train_set.imgs
 train_labels = train_set.labels
 
+# Report the split sizes for quick sanity checks.
 n = train_imgs.shape[0] + merged_img.shape[0]
 print(f"Train: {len(train_imgs):>6} images  ({len(train_imgs)/n:.1%})")
 print(f"Val:   {len(val_imgs):>6} images  ({len(val_imgs)/n:.1%})")
 print(f"Test:  {len(test_imgs):>6} images  ({len(test_imgs)/n:.1%})")
  
+# Save the processed split for all training scripts.
 np.savez_compressed(
     "bloodmnist_70_15_15.npz",
     train_images=train_imgs, train_labels=train_labels,

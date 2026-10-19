@@ -8,12 +8,14 @@ import numpy as np
 import time
 import torch.nn.functional as F
 from sklearn.metrics import classification_report
+# Load the best checkpoint and test final performance.
 
 
 train_loader, val_loader, test_loader, (mean, std) = get_dataloaders(batch_size= 64, num_workers= 2)
 
 
 def evaluate():
+    # Run inference and calculate per-class evaluation metrics.
     test_probs_list = []
     test_targets_list = []
 
@@ -32,6 +34,7 @@ def evaluate():
     print(f"Evaluating Model A with {model.count_trainable_parameters():,} trainable parameters.")  """
 
 
+    # Load the saved weights for the chosen model variant.
     state_dict_A = torch.load('Weights/model_A.pth', weights_only=True)
     state_dict_B = torch.load('Weights/model_B.pth', weights_only=True)
     model.load_state_dict(state_dict_B)
@@ -41,6 +44,7 @@ def evaluate():
     start_time = time.time()
 
     with torch.inference_mode():
+        # Feed each test batch through the network. 
         for images, labels in test_loader:
             images , labels = images.to(device), labels.to(device)
 
